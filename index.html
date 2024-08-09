@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Search</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            text-align: center;
+        }
+
+        #search-bar {
+            width: 100%;
+            max-width: 500px;
+            margin: 20px auto;
+            padding: 10px;
+            border: 2px solid #ccc;
+            border-radius: 5px;
+        }
+
+        #results {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .image-container {
+            margin: 10px;
+            cursor: pointer;
+        }
+
+        .image-container img {
+            max-width: 300px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s;
+        }
+
+        .image-container img:hover {
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Image Search</h1>
+    <!-- Search bar -->
+    <input type="text" id="search-bar" placeholder="Search for images...">
+    
+    <!-- Search result container -->
+    <div id="results"></div>
+
+    <script>
+        // Pls don't steal this
+        const API_KEY = 'EkS7EeL67734AALpga1kV0r1mmHNUW9VAx9syJ9WaP6UVLdnwl154N6d';
+
+        // Event listener for enter key
+        document.getElementById('search-bar').addEventListener('keyup', function(event) {
+            if (event.key === 'Enter') {
+                searchImages(event.target.value);
+            }
+        });
+
+        // Function to search 
+        function searchImages(query) {
+            // Fetch images from the Pexels API 
+            fetch(`https://api.pexels.com/v1/search?query=${query}&per_page=12`, {
+                headers: {
+                    Authorization: API_KEY
+                }
+            })
+            .then(response => response.json()) // Convert to JSON
+            .then(data => {
+                const results = document.getElementById('results');
+                // Clear previous results
+                results.innerHTML = '';
+
+                // Loop through each photo in the response data
+                data.photos.forEach(photo => {
+
+                    const imgContainer = document.createElement('div');
+                    imgContainer.className = 'image-container';
+
+                    const img = document.createElement('img');
+                    // Using medium size image
+                    img.src = photo.src.medium;
+                    img.alt = photo.alt;
+
+                    // Event listener to open the image in a new tab when clicked
+                    imgContainer.addEventListener('click', () => {
+                        window.open(photo.src.original, '_blank');
+                    });
+
+                    // Append the image to the container
+                    // Append the container to the results div
+                    imgContainer.appendChild(img);
+                    results.appendChild(imgContainer);
+                });
+            })
+        }
+    </script>
+
+</body>
+</html>
