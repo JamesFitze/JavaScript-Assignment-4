@@ -1,3 +1,7 @@
+<!--Documentation for Pexels API and Google cloud vision API-->
+<!--https://www.pexels.com/api/documentation/#guidelines-->
+<!--https://cloud.google.com/vision/docs-->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -41,6 +45,81 @@
         .image-container img:hover {
             transform: scale(1.05);
         }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgb(0,0,0);
+            background-color: rgba(0,0,0,0.4);
+            padding-top: 60px;
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            display: flex;
+        }
+
+        .modal-content img {
+            max-width: 50%;
+            margin-right: 20px;
+        }
+
+        .modal-content .labels, .modal-content .properties {
+            max-width: 50%;
+            font-size: 16px;
+            color: #333;
+        }
+
+        .modal-content .labels .label-item, .modal-content .properties .property-item {
+            margin-bottom: 10px;
+        }
+
+        .modal-content .properties .color-swatch {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 1px solid #ccc;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+
+        .modal-content .open-btn {
+            display: block;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        .modal-content .open-btn:hover {
+            background-color: #45a049;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -49,12 +128,29 @@
     <!-- Search bar -->
     <input type="text" id="search-bar" placeholder="Search for images...">
     
-    <!-- Search result container -->
+    <!--Search result container -->
     <div id="results"></div>
 
+    <!-- The Modal -->
+    <div id="myModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <img id="modal-image" src="" alt="Analyzed Image">
+            <div class="labels" id="modal-labels">
+                <h2>Detected Labels</h2>
+            </div>
+            <div class="properties" id="modal-properties">
+                <h2>Image Properties</h2>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // Pls don't steal this
-        const API_KEY = 'EkS7EeL67734AALpga1kV0r1mmHNUW9VAx9syJ9WaP6UVLdnwl154N6d';
+        // Pls don't take this
+        const PEXELS_API_KEY = 'EkS7EeL67734AALpga1kV0r1mmHNUW9VAx9syJ9WaP6UVLdnwl154N6d';
+
+        // Pls don't take this either
+        const VISION_API_KEY = 'AIzaSyBB9PVnW86pX5xVMgO_Ed9ZqfCkZBNAHYM';
 
         // Event listener for enter key
         document.getElementById('search-bar').addEventListener('keyup', function(event) {
@@ -63,42 +159,176 @@
             }
         });
 
-        // Function to search 
+        // Image search function
         function searchImages(query) {
-            // Fetch images from the Pexels API 
+            // Get images from Pexels API
             fetch(`https://api.pexels.com/v1/search?query=${query}&per_page=12`, {
                 headers: {
-                    Authorization: API_KEY
+                    Authorization: PEXELS_API_KEY
                 }
             })
-            .then(response => response.json()) // Convert to JSON
+            // Convert the response to JSON
+            .then(response => response.json()) 
             .then(data => {
-                const results = document.getElementById('results');
-                // Clear previous results
-                results.innerHTML = '';
 
-                // Loop through each photo in the response data
+                // Display the images in the results div
+                const results = document.getElementById('results');
+
+                // Clear previous results
+                results.innerHTML = ''; 
+
+                // Loop through the images and display them
                 data.photos.forEach(photo => {
 
+                    // Create a container div for each image
                     const imgContainer = document.createElement('div');
                     imgContainer.className = 'image-container';
 
+                    // Image element to show the actual image
                     const img = document.createElement('img');
-                    // Using medium size image
                     img.src = photo.src.medium;
                     img.alt = photo.alt;
 
-                    // Event listener to open the image in a new tab when clicked
+                    // Event listener for clicking on the image
                     imgContainer.addEventListener('click', () => {
-                        window.open(photo.src.original, '_blank');
+
+                        // Display the image in the modal
+                        displayModal(photo.src.original);
+
+                        // Analyze the image using Google Cloud Vision API
+                        analyzeImage(photo.src.original);
                     });
 
-                    // Append the image to the container
-                    // Append the container to the results div
+                    // Add the image to the container div
                     imgContainer.appendChild(img);
                     results.appendChild(imgContainer);
                 });
             })
+            // Display any errors to the console
+            .catch(error => console.error('Error fetching images:', error)); 
+        }
+
+        // Analyze image function
+        function analyzeImage(imageUrl) {
+
+            // JSON for the Vision API request
+            const requestBody = {
+                "requests": [
+                    {
+                        "image": {
+                            "source": {
+                                "imageUri": imageUrl
+                            }
+                        },
+                        "features": [
+                            {
+                                "type": "LABEL_DETECTION",
+                                "maxResults": 10
+                            },
+                            {
+                                "type": "IMAGE_PROPERTIES",
+                                "maxResults": 5
+                            }
+                        ]
+                    }
+                ]
+            };
+
+            // Send the request to the Vision API
+            fetch(`https://vision.googleapis.com/v1/images:annotate?key=${VISION_API_KEY}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestBody)
+            })
+            // Convert the response to JSON
+            .then(response => response.json()) 
+            .then(data => {
+
+                // Get the 'modal-labels' div to display the labels
+                const labelsDiv = document.getElementById('modal-labels');
+
+                // Clear previous results
+                labelsDiv.innerHTML = '<h2>Detected Labels</h2>'; 
+
+                // Get the labels from the response
+                const labels = data.responses[0].labelAnnotations;
+                
+                // Display the labels in the 'modal-labels' div
+                labels.forEach(label => {
+                    const labelElement = document.createElement('div');
+                    labelElement.className = 'label-item';
+                    labelElement.textContent = `${label.description}`;
+                    labelsDiv.appendChild(labelElement);
+                });
+
+                // Get the 'modal-properties' div to display the properties
+                const propertiesDiv = document.getElementById('modal-properties');
+
+                // Clear previous results
+                propertiesDiv.innerHTML = '<h2>Image Properties</h2>';
+
+                // Get the properties from the response
+                const properties = data.responses[0].imagePropertiesAnnotation;
+                
+                // Display the properties in the 'modal-properties' div
+                if (properties) {
+
+                    // Display dominant colors
+                    if (properties.dominantColors) {
+                        const colors = properties.dominantColors.colors;
+                        colors.forEach(color => {
+                            const colorElement = document.createElement('div');
+                            colorElement.className = 'property-item';
+                            const colorSwatch = document.createElement('span');
+                            colorSwatch.className = 'color-swatch';
+                            colorSwatch.style.backgroundColor = `rgb(${color.color.red}, ${color.color.green}, ${color.color.blue})`;
+                            colorElement.appendChild(colorSwatch);
+                            colorElement.innerHTML += `rgb(${color.color.red}, ${color.color.green}, ${color.color.blue})`;
+                            propertiesDiv.appendChild(colorElement);
+                        });
+                    }
+                }
+
+                // Button to open the image in a new tab
+                const openBtn = document.createElement('button');
+                openBtn.className = 'open-btn';
+                openBtn.textContent = 'Open Image in New Tab';
+                openBtn.addEventListener('click', () => {
+                    window.open(imageUrl, '_blank');
+                });
+                propertiesDiv.appendChild(openBtn);
+            })
+            // Show any errors to the console
+            .catch(error => console.error('Error analyzing image:', error)); 
+        }
+
+        // Function to display the modal with the image
+        function displayModal(imageUrl) {
+            const modal = document.getElementById('myModal');
+            const modalImage = document.getElementById('modal-image');
+            modalImage.src = imageUrl;
+            modal.style.display = 'block';
+        }
+
+        // Get the modal
+        const modal = document.getElementById('myModal');
+
+        // Get the <span> element that closes the modal
+        const span = document.getElementsByClassName('close')[0];
+
+        // When the user clicks on <span> (x), close the modal
+        // Don't really need this, can remove
+        span.onclick = function() {
+            modal.style.display = 'none';
+        }
+
+        // When the user clicks anywhere outside of the modal, close it
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
         }
     </script>
 
